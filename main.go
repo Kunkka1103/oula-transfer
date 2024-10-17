@@ -76,10 +76,9 @@ func transferData(pgDsn, mysqlDsn string) {
 		JOIN machine m ON m.miner_account_id = ma.id
 		GROUP BY ma.main_user_id
 	)
-	SELECT u.email, to_timestamp(ma.max_last_commit_solution) FROM public."user" u
+	SELECT COUNT(distinct u.email) FROM public."user" u
 	LEFT JOIN machine_activity ma ON ma.main_user_id = u.id
-	WHERE to_timestamp(ma.max_last_commit_solution) < (DATE_TRUNC('day', NOW()) - INTERVAL '1 days')
-	ORDER BY to_timestamp(ma.max_last_commit_solution) DESC`
+	WHERE  to_timestamp(ma.max_last_commit_solution) < (DATE_TRUNC('day', NOW()) - INTERVAL '1 days')`
 	lostUsersCount := queryCount(pgDb, lostUsersQuery)
 	insertToMySQL(sqlDb, "lost_users_count", today, lostUsersCount)
 
