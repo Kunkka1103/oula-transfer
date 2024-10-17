@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -19,6 +20,12 @@ var (
 
 func main() {
 	flag.Parse()
+
+	if *pgDsn == "" || *mysqlDsn == "" {
+		log.Println("PostgreSQL DSN and MySQL DSN must be provided.")
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	for {
 		now := time.Now()
@@ -40,6 +47,8 @@ func parseExecutionTime(timeStr string) (int, int) {
 }
 
 func transferData(pgDsn, mysqlDsn string) {
+	log.Println("Starting data transfer...")
+
 	// Connect to PostgreSQL
 	pgDb, err := sql.Open("postgres", pgDsn)
 	if err != nil {
@@ -91,13 +100,16 @@ func transferData(pgDsn, mysqlDsn string) {
 	WHERE to_timestamp(m.last_commit_solution) >= DATE(NOW())`
 	activeMachinesChannelCount := queryCount(pgDb, activeMachinesChannelQuery)
 	insertToMySQL(sqlDb, "active_channel_machines_count", today, activeMachinesChannelCount)
+
+	log.Println("Data transfer completed.")
 }
 
 func queryCount(db *sql.DB, query string) int {
 	var count int
 	err := db.QueryRow(query).Scan(&count)
 	if err != nil {
-		log.Fatalf("Failed to execute query: %v", err)
+		log.Printf("Failed to execute query: %s, error: %v", query, err)
+		os.Exit(1)
 	}
 	return count
 }
@@ -106,6 +118,8 @@ func insertToMySQL(db *sql.DB, tableName, date string, count int) {
 	query := fmt.Sprintf("INSERT INTO %s (date, count) VALUES (?, ?)", tableName)
 	_, err := db.Exec(query, date, count)
 	if err != nil {
-		log.Fatalf("Failed to insert data to MySQL: %v", err)
+		log.Printf("Failed to insert data to MySQL: %s, error: %v", query, err)
+		os.Exit(1)
 	}
+	log.Printf("Successfully inserted data into %s: date=%s, count=%d", tableName, date, count)
 }
