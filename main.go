@@ -65,29 +65,25 @@ func transferData(pgDsn, mysqlDsn string) {
 
 	today := time.Now().Format("2006-01-02")
 
-	// 1. Total Machines Count
-	machineCount := queryCount(pgDb, `SELECT count(*) FROM machine m WHERE to_timestamp(m.last_commit_solution) >= DATE(NOW())`)
-	insertToMySQL(sqlDb, "machines_count", today, machineCount)
-
-	// 2. Active Machines Count
+	// 1. Active Machines Count
 	activeMachineCount := queryCount(pgDb, `SELECT count(*) FROM machine m WHERE to_timestamp(m.last_commit_solution) >= DATE(NOW())`)
 	insertToMySQL(sqlDb, "active_machines_count", today, activeMachineCount)
 
-	// 3. Lost Users Count
+	// 2. Lost Users Count
 	lostUsersQuery := `WITH machine_activity AS (
 		SELECT ma.main_user_id, MAX(m.last_commit_solution) AS max_last_commit_solution
 		FROM miner_account ma
 		JOIN machine m ON m.miner_account_id = ma.id
 		GROUP BY ma.main_user_id
 	)
-	SELECT COUNT(u.email) FROM public."user" u
+	SELECT u.email, to_timestamp(ma.max_last_commit_solution) FROM public."user" u
 	LEFT JOIN machine_activity ma ON ma.main_user_id = u.id
-	WHERE ma.max_last_commit_solution IS NULL
-	OR to_timestamp(ma.max_last_commit_solution) < (DATE_TRUNC('day', NOW()) - INTERVAL '2 days')`
+	WHERE to_timestamp(ma.max_last_commit_solution) < (DATE_TRUNC('day', NOW()) - INTERVAL '1 days')
+	ORDER BY to_timestamp(ma.max_last_commit_solution) DESC`
 	lostUsersCount := queryCount(pgDb, lostUsersQuery)
 	insertToMySQL(sqlDb, "lost_users_count", today, lostUsersCount)
 
-	// 4. Active Machines in Channel
+	// 3. Active Machines in Channel
 	activeMachinesChannelQuery := `WITH select_user AS(
 		SELECT u.email, ma.id, ma.name
 		FROM miner_account ma
@@ -123,3 +119,25 @@ func insertToMySQL(db *sql.DB, tableName, date string, count int) {
 	}
 	log.Printf("Successfully inserted data into %s: date=%s, count=%d", tableName, date, count)
 }
+
+/*
+MySQL Table Creation Statements
+
+CREATE TABLE active_machines_count (
+	date DATE NOT NULL,
+	count INT NOT NULL,
+	PRIMARY KEY (date)
+);
+
+CREATE TABLE lost_users_count (
+	date DATE NOT NULL,
+	count INT NOT NULL,
+	PRIMARY KEY (date)
+);
+
+CREATE TABLE active_channel_machines_count (
+	date DATE NOT NULL,
+	count INT NOT NULL,
+	PRIMARY KEY (date)
+);
+*/
