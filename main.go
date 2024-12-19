@@ -65,11 +65,15 @@ func transferData(pgDsn, mysqlDsn string) {
 
 	today := time.Now().Format("2006-01-02")
 
-	// 1. Active Machines Count
-	activeMachineCount := queryCount(pgDb, `SELECT count(*) FROM machine m WHERE to_timestamp(m.last_commit_solution) >= DATE(NOW())`)
-	insertToMySQL(sqlDb, "active_machines_count", today, activeMachineCount)
+	// 1. Active Machines Count ALEO
+	AleoActiveMachineCount := queryCount(pgDb, `SELECT count(*) FROM machine m WHERE to_timestamp(m.last_commit_solution) >= DATE(NOW()) AND project='ALEO'`)
+	insertToMySQL(sqlDb, "active_machines_count_aleo", today, AleoActiveMachineCount)
 
-	// 2. Lost Users Count
+	// 2. Active Machines Count QUAI
+	QuaiActiveMachineCount := queryCount(pgDb, `SELECT count(*) FROM machine m WHERE to_timestamp(m.last_commit_solution) >= DATE(NOW()) AND project='Quai_Garden'`)
+	insertToMySQL(sqlDb, "active_machines_count_quai_garden", today, QuaiActiveMachineCount)
+
+	// 3. Lost Users Count
 	lostUsersQuery := `WITH machine_activity AS (
 		SELECT ma.main_user_id, MAX(m.last_commit_solution) AS max_last_commit_solution
 		FROM miner_account ma
@@ -82,19 +86,45 @@ func transferData(pgDsn, mysqlDsn string) {
 	lostUsersCount := queryCount(pgDb, lostUsersQuery)
 	insertToMySQL(sqlDb, "lost_users_count", today, lostUsersCount)
 
-	// 3. Active Machines in Channel
-	activeMachinesChannelQuery := `WITH select_user AS(
+	// 3. Active Machines in Channel Aleo
+	AleoactiveMachinesChannelQuery := `WITH select_user AS(
 		SELECT u.email, ma.id, ma.name
 		FROM miner_account ma
 		LEFT JOIN "public"."user" u ON u.id = ma.main_user_id
 		LEFT JOIN invitation_code ic ON ic."id" = u.invitation_code_id
-		WHERE ic.tag = 'zklion'
+		WHERE ic.tag in (
+			SELECT tag
+				FROM bonus_obj
+				WHERE user_id IS NULL 
+					AND project = 'ALEO' 
+					AND tag !='default'
+				)
 	)
 	SELECT count(*) FROM machine m 
 	JOIN select_user su ON m.miner_account_id = su.id
 	WHERE to_timestamp(m.last_commit_solution) >= DATE(NOW())`
-	activeMachinesChannelCount := queryCount(pgDb, activeMachinesChannelQuery)
-	insertToMySQL(sqlDb, "active_channel_machines_count", today, activeMachinesChannelCount)
+	AleoActiveMachinesChannelCount := queryCount(pgDb, AleoactiveMachinesChannelQuery)
+	insertToMySQL(sqlDb, "active_channel_machines_count_aleo", today, AleoActiveMachinesChannelCount)
+
+	// 3. Active Machines in Channel Aleo
+	QuaiActiveMachinesChannelQuery := `WITH select_user AS(
+		SELECT u.email, ma.id, ma.name
+		FROM miner_account ma
+		LEFT JOIN "public"."user" u ON u.id = ma.main_user_id
+		LEFT JOIN invitation_code ic ON ic."id" = u.invitation_code_id
+		WHERE ic.tag in (
+			SELECT tag
+				FROM bonus_obj
+				WHERE user_id IS NULL 
+					AND project = 'ALEO' 
+					AND tag !='default'
+				)
+	)
+	SELECT count(*) FROM machine m 
+	JOIN select_user su ON m.miner_account_id = su.id
+	WHERE to_timestamp(m.last_commit_solution) >= DATE(NOW())`
+	QuaiActiveMachinesChannelCount := queryCount(pgDb, QuaiActiveMachinesChannelQuery)
+	insertToMySQL(sqlDb, "active_channel_machines_count_quai_garden", today, QuaiActiveMachinesChannelCount)
 
 	log.Println("Data transfer completed.")
 }
