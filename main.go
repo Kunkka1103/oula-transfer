@@ -106,7 +106,7 @@ func transferData(pgDsn, mysqlDsn string) {
 	AleoActiveMachinesChannelCount := queryCount(pgDb, AleoactiveMachinesChannelQuery)
 	insertToMySQL(sqlDb, "active_channel_machines_count_aleo", today, AleoActiveMachinesChannelCount)
 
-	// 3. Active Machines in Channel Aleo
+	// 3.2. Active Machines in Channel Quai_Garden
 	QuaiActiveMachinesChannelQuery := `WITH select_user AS(
 		SELECT u.email, ma.id, ma.name
 		FROM miner_account ma
@@ -116,7 +116,7 @@ func transferData(pgDsn, mysqlDsn string) {
 			SELECT tag
 				FROM bonus_obj
 				WHERE user_id IS NULL 
-					AND project = 'ALEO' 
+					AND project = 'Quai_Garden 
 					AND tag !='default'
 				)
 	)
