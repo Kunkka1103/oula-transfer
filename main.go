@@ -70,8 +70,8 @@ func transferData(pgDsn, mysqlDsn string) {
 	insertToMySQL(sqlDb, "active_machines_count_aleo", today, AleoActiveMachineCount)
 
 	// 2. Active Machines Count QUAI
-	QuaiActiveMachineCount := queryCount(pgDb, `SELECT count(*) FROM machine m WHERE to_timestamp(m.last_commit_solution) >= DATE(NOW()) AND project='Quai_Garden'`)
-	insertToMySQL(sqlDb, "active_machines_count_quai_garden", today, QuaiActiveMachineCount)
+	QuaiActiveMachineCount := queryCount(pgDb, `SELECT count(*) FROM machine m WHERE to_timestamp(m.last_commit_solution) >= DATE(NOW()) AND project='Quai'`)
+	insertToMySQL(sqlDb, "active_machines_count_quai", today, QuaiActiveMachineCount)
 
 	// 3. Lost Users Count
 	lostUsersQuery := `WITH machine_activity AS (
@@ -106,7 +106,7 @@ func transferData(pgDsn, mysqlDsn string) {
 	AleoActiveMachinesChannelCount := queryCount(pgDb, AleoactiveMachinesChannelQuery)
 	insertToMySQL(sqlDb, "active_channel_machines_count_aleo", today, AleoActiveMachinesChannelCount)
 
-	// 3.2. Active Machines in Channel Quai_Garden
+	// 3.2. Active Machines in Channel Quai
 	QuaiActiveMachinesChannelQuery := `WITH select_user AS(
 		SELECT u.email, ma.id, ma.name
 		FROM miner_account ma
@@ -116,7 +116,7 @@ func transferData(pgDsn, mysqlDsn string) {
 			SELECT tag
 				FROM bonus_obj
 				WHERE user_id IS NULL 
-					AND project = 'Quai_Garden 
+					AND project = 'Quai' 
 					AND tag !='default'
 				)
 	)
@@ -124,7 +124,7 @@ func transferData(pgDsn, mysqlDsn string) {
 	JOIN select_user su ON m.miner_account_id = su.id
 	WHERE to_timestamp(m.last_commit_solution) >= DATE(NOW())`
 	QuaiActiveMachinesChannelCount := queryCount(pgDb, QuaiActiveMachinesChannelQuery)
-	insertToMySQL(sqlDb, "active_channel_machines_count_quai_garden", today, QuaiActiveMachinesChannelCount)
+	insertToMySQL(sqlDb, "active_channel_machines_count_quai", today, QuaiActiveMachinesChannelCount)
 
 	log.Println("Data transfer completed.")
 }
